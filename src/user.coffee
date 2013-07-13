@@ -21,8 +21,8 @@ class User
     "#{@nick()}!#{@username}@#{@campfire.domain}"
 
   speak_in_room: (channel, message) ->
-    @find_room channel, (room) ->
-      room.speak message
+    @find_room channel, (room) =>
+      room.speak @_clean_message(room, message)
 
   leave_room: (channel, message) ->
     @find_room channel, (room) =>
@@ -30,9 +30,11 @@ class User
         @irc_client.send "#{@mask()} PART #{channel} :#{message}"
 
   find_room: (channel, callback) ->
-    @campfire.presence (err, rooms) ->
+    @campfire.presence (err, rooms) =>
       for room in rooms
-        callback(room) if room.name.snakeCase() == channel.replace("#", "")
+        if room.name.snakeCase() == channel.replace("#", "")
+          @campfire.room room.id, (err, r) ->
+            callback(r)
 
   on: ->
     @events.on.apply @events, arguments
@@ -45,6 +47,19 @@ class User
 
     @irc_client.send "#{@mask()} NICK :#{new_nick}"
     @_nick = new_nick
+
+  _clean_message: (room, message, callback) ->
+    tokens = message.split(" ").map (token) ->
+      possible_name = token.match /\b([a-z]+_[a-z]+)(.*)/
+      if possible_name
+        name = possible_name
+        for user in room.users
+          name = "#{user.name}#{possible_name[2]}" if user.name.snakeCase() == possible_name[1]
+        name
+      else
+        token
+    tokens.join(" ")
+
 
   _fetch: ->
     @_fetchFunction() (err, data) =>
