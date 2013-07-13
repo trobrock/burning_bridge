@@ -29,81 +29,84 @@ class Client
 rooms = new Rooms()
 
 handler = (socket) ->
-  client = new Client(socket)
-  current_user = null
+  try
+    client = new Client(socket)
+    current_user = null
 
-  socket.name = socket.remoteAddress + ":" + socket.remotePort
+    socket.name = socket.remoteAddress + ":" + socket.remotePort
 
-  carrier.carry socket, (line) ->
-    command = Command.parse(line)
-    console.log "[r] #{command.command} with args #{command.args}"
+    carrier.carry socket, (line) ->
+      command = Command.parse(line)
+      console.log "[r] #{command.command} with args #{command.args}"
 
-    switch command.command
-      when "PASS"
-        [subdomain, api_token] = command.args[0].split(":")
-        current_user = new User(subdomain, api_token, client)
-      when "NICK"
-        current_user.nick(command.args[0]) unless current_user.nick()
-      when "USER"
-        current_user.username = command.args[0]
-        current_user.hostname = command.args[1]
-        client.send "localhost 001 #{current_user.nick()} Welcome #{current_user.mask()}"
-        client.send "localhost 002 #{current_user.nick()} Your host"
-        client.send "localhost 003 #{current_user.nick()} This server was created"
-        client.send "localhost 004 #{current_user.nick()} myIrcServer 0.0.1"
+      switch command.command
+        when "PASS"
+          [subdomain, api_token] = command.args[0].split(":")
+          current_user = new User(subdomain, api_token, client)
+        when "NICK"
+          current_user.nick(command.args[0]) unless current_user.nick()
+        when "USER"
+          current_user.username = command.args[0]
+          current_user.hostname = command.args[1]
+          client.send "localhost 001 #{current_user.nick()} Welcome #{current_user.mask()}"
+          client.send "localhost 002 #{current_user.nick()} Your host"
+          client.send "localhost 003 #{current_user.nick()} This server was created"
+          client.send "localhost 004 #{current_user.nick()} myIrcServer 0.0.1"
 
-        client.send "localhost 375 #{current_user.nick()} :- Message of the Day -"
-        client.send "localhost 372 #{current_user.nick()} myIrcServer 0.0.1"
-        client.send "localhost 376 #{current_user.nick()} :End of /MOTD command."
-      when "PING"
-        client.send "localhost PONG localhost :localhost"
-      when "MODE"
-        target = command.args[0]
-        if target.match /^\#/
-          if command.args[1]
-            client.send "#{current_user.mask()} MODE #{target} #{command.args[1]} #{current_user.nick()}"
-      when "LIST"
-        client.send "localhost 321 #{current_user.nick()} Channel :Users  Name"
-        for room in rooms.rooms
-          client.send "localhost 322 #{current_user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
-        client.send "localhost 323 #{current_user.nick()} :End of /LIST"
-      when "JOIN"
-        channel = command.args[0]
-        room = null
-        for r in rooms.rooms
-          room = r if r.name.snakeCase() == channel.replace("#", "")
+          client.send "localhost 375 #{current_user.nick()} :- Message of the Day -"
+          client.send "localhost 372 #{current_user.nick()} myIrcServer 0.0.1"
+          client.send "localhost 376 #{current_user.nick()} :End of /MOTD command."
+        when "PING"
+          client.send "localhost PONG localhost :localhost"
+        when "MODE"
+          target = command.args[0]
+          if target.match /^\#/
+            if command.args[1]
+              client.send "#{current_user.mask()} MODE #{target} #{command.args[1]} #{current_user.nick()}"
+        when "LIST"
+          client.send "localhost 321 #{current_user.nick()} Channel :Users  Name"
+          for room in rooms.rooms
+            client.send "localhost 322 #{current_user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
+          client.send "localhost 323 #{current_user.nick()} :End of /LIST"
+        when "JOIN"
+          channel = command.args[0]
+          room = null
+          for r in rooms.rooms
+            room = r if r.name.snakeCase() == channel.replace("#", "")
 
-        users = for user in room.users
-          user.name.snakeCase()
+          users = for user in room.users
+            user.name.snakeCase()
 
-        room.join ->
-          client.send "#{current_user.mask()} JOIN #{channel}"
-          client.send "localhost 331 #{current_user.nick()} #{channel} :No topic is set"
-          client.send "localhost 353 #{current_user.nick()} = #{channel} :#{users.join(" ")}"
-          client.send "localhost 366 #{current_user.nick()} #{channel} :End of /NAMES list."
+          room.join ->
+            client.send "#{current_user.mask()} JOIN #{channel}"
+            client.send "localhost 331 #{current_user.nick()} #{channel} :No topic is set"
+            client.send "localhost 353 #{current_user.nick()} = #{channel} :#{users.join(" ")}"
+            client.send "localhost 366 #{current_user.nick()} #{channel} :End of /NAMES list."
 
-          # TODO: How do we disconnect this on PART
-          room.listen (message) =>
-            return if message.type != "TextMessage"
-            return if message.userId == current_user.id
+            # TODO: How do we disconnect this on PART
+            room.listen (message) =>
+              return if message.type != "TextMessage"
+              return if message.userId == current_user.id
 
-            user = new User(campfire_subdomain, campfire_token, client, message.userId)
-            user.once "fetched", ->
-              name = user.real_name.snakeCase()
-              client.send "#{user.mask()} PRIVMSG #{channel} :#{message.body}"
-      when "PRIVMSG"
-        channel = command.args[0]
-        message = command.args.slice(1).join(" ").substr(1)
+              user = new User(campfire_subdomain, campfire_token, client, message.userId)
+              user.once "fetched", ->
+                name = user.real_name.snakeCase()
+                client.send "#{user.mask()} PRIVMSG #{channel} :#{message.body}"
+        when "PRIVMSG"
+          channel = command.args[0]
+          message = command.args.slice(1).join(" ").substr(1)
 
-        current_user.speak_in_room(channel, message)
-      when "PART"
-        channel = command.args[0]
-        message = command.args[1].substr(1)
+          current_user.speak_in_room(channel, message)
+        when "PART"
+          channel = command.args[0]
+          message = command.args[1].substr(1)
 
-        current_user.leave_room(channel, message)
+          current_user.leave_room(channel, message)
 
-  socket.on "end", ->
-    console.log "Client disconnected"
+    socket.on "end", ->
+      console.log "Client disconnected"
+  catch e
+    console.log "Caught fatal error:", e
 
 server = net.createServer(handler).listen 6666, ->
   console.log "Started listening on 6666"
