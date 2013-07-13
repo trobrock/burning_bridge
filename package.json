@@ -1,8 +1,8 @@
 {
-  "name": "campfire_irc",
+  "name": "burning_bridge",
   "version": "0.0.0",
-  "description": "ERROR: No README.md file found!",
-  "main": "lib/index.js",
+  "description": "Bridge between Campfire and IRC",
+  "main": "lib/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,6 +14,6 @@
     "type": "git",
     "url": "https://github.com/trobrock/campfire_irc.git"
   },
-  "author": "",
+  "author": "Trae Robrock <trobrock@gmail.com>",
   "license": "MIT"
 }
