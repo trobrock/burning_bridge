@@ -32,8 +32,6 @@ handler = (socket) ->
   client = new Client(socket)
   current_user = null
 
-  socket.name = socket.remoteAddress + ":" + socket.remotePort
-
   carrier.carry socket, (line) ->
     command = Command.parse(line)
     console.log "[r] #{command.command} with args #{command.args}"
