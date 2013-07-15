@@ -29,9 +29,13 @@ class Client
 class Server
   clients: []
   rooms: new Rooms()
+  hostname: "localhost"
 
   add_client: (client) ->
     @clients.push client
+
+  message: (client, msg) ->
+    client.send "#{@hostname} #{msg}"
 
 server = new Server()
 
@@ -54,26 +58,26 @@ handler = (socket) ->
       when "USER"
         current_user.username = command.args[0]
         current_user.hostname = command.args[1]
-        client.send "localhost 001 #{current_user.nick()} Welcome #{current_user.mask()}"
-        client.send "localhost 002 #{current_user.nick()} Your host"
-        client.send "localhost 003 #{current_user.nick()} This server was created"
-        client.send "localhost 004 #{current_user.nick()} myIrcServer 0.0.1"
+        server.message client, "001 #{current_user.nick()} Welcome #{current_user.mask()}"
+        server.message client, "002 #{current_user.nick()} Your host"
+        server.message client, "003 #{current_user.nick()} This server was created"
+        server.message client, "004 #{current_user.nick()} myIrcServer 0.0.1"
 
-        client.send "localhost 375 #{current_user.nick()} :- Message of the Day -"
-        client.send "localhost 372 #{current_user.nick()} myIrcServer 0.0.1"
-        client.send "localhost 376 #{current_user.nick()} :End of /MOTD command."
+        server.message client, "375 #{current_user.nick()} :- Message of the Day -"
+        server.message client, "372 #{current_user.nick()} myIrcServer 0.0.1"
+        server.message client, "376 #{current_user.nick()} :End of /MOTD command."
       when "PING"
-        client.send "localhost PONG localhost :localhost"
+        server.message client, "PONG localhost :localhost"
       when "MODE"
         target = command.args[0]
         if target.match /^\#/
           if command.args[1]
             client.send "#{current_user.mask()} MODE #{target} #{command.args[1]} #{current_user.nick()}"
       when "LIST"
-        client.send "localhost 321 #{current_user.nick()} Channel :Users  Name"
+        server.message client, "321 #{current_user.nick()} Channel :Users  Name"
         for room in server.rooms.rooms
-          client.send "localhost 322 #{current_user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
-        client.send "localhost 323 #{current_user.nick()} :End of /LIST"
+          server.message client, "322 #{current_user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
+        server.message client, "323 #{current_user.nick()} :End of /LIST"
       when "JOIN"
         channel = command.args[0]
         room = null
@@ -85,9 +89,9 @@ handler = (socket) ->
 
         room.join ->
           client.send "#{current_user.mask()} JOIN #{channel}"
-          client.send "localhost 331 #{current_user.nick()} #{channel} :No topic is set"
-          client.send "localhost 353 #{current_user.nick()} = #{channel} :#{users.join(" ")}"
-          client.send "localhost 366 #{current_user.nick()} #{channel} :End of /NAMES list."
+          server.message client, "331 #{current_user.nick()} #{channel} :No topic is set"
+          server.message client, "353 #{current_user.nick()} = #{channel} :#{users.join(" ")}"
+          server.message client, "366 #{current_user.nick()} #{channel} :End of /NAMES list."
 
           # TODO: Move this to the Rooms object to have one listener per room per server
           room.listen (message) =>
@@ -110,7 +114,7 @@ handler = (socket) ->
         current_user.leave_room(channel, message)
 
   socket.on "end", ->
-    server.clients.splice(server.clients.indexAt(client))
+    server.clients.splice(server.clients.indexOf(client), 1)
     console.log "Client disconnected"
 
   socket.on "error", (e) ->
