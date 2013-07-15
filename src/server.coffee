@@ -53,6 +53,20 @@ class Server
   message: (client, event, msg) ->
     client.send "#{@hostname} #{@events[event]} #{msg}"
 
+  pong: (client) ->
+    client.send "#{@hostname} PONG #{@hostname} :#{@hostname}"
+
+  welcome: (client, user) ->
+    @message client, "welcome", "#{user.nick()} Welcome #{user.mask()}"
+    @message client, "yourHost", "#{user.nick()} Your host"
+    @message client, "created", "#{user.nick()} This server was created"
+    @message client, "myInfo", "#{user.nick()} myIrcServer 0.0.1"
+
+  motd: (client, user) ->
+    @message client, "motdStart", "#{user.nick()} :- Message of the Day -"
+    @message client, "motd", "#{user.nick()} myIrcServer 0.0.1"
+    @message client, "motdEnd", "#{user.nick()} :End of /MOTD command."
+
 server = new Server()
 
 handler = (socket) ->
@@ -74,16 +88,10 @@ handler = (socket) ->
       when "USER"
         current_user.username = command.args[0]
         current_user.hostname = command.args[1]
-        server.message client, "welcome", "#{current_user.nick()} Welcome #{current_user.mask()}"
-        server.message client, "yourHost", "#{current_user.nick()} Your host"
-        server.message client, "created", "#{current_user.nick()} This server was created"
-        server.message client, "myInfo", "#{current_user.nick()} myIrcServer 0.0.1"
-
-        server.message client, "motdStart", "#{current_user.nick()} :- Message of the Day -"
-        server.message client, "motd", "#{current_user.nick()} myIrcServer 0.0.1"
-        server.message client, "motdEnd", "#{current_user.nick()} :End of /MOTD command."
+        server.welcome client, current_user
+        server.motd client, current_user
       when "PING"
-        server.message client, "PONG localhost :localhost"
+        server.pong client
       when "MODE"
         target = command.args[0]
         if target.match /^\#/
