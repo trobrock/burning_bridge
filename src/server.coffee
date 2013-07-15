@@ -30,12 +30,28 @@ class Server
   clients: []
   rooms: new Rooms()
   hostname: "localhost"
+  events: {
+    welcome: "001",
+    yourHost: "002",
+    created: "003",
+    myInfo: "004",
+    motdStart: "375",
+    motd: "372",
+    motdEnd: "376",
+    listStart: "321",
+    list: "322",
+    listEnd: "323",
+    topic: "332",
+    noTopic: "331",
+    namesReply: "353",
+    endNames: "366"
+  }
 
   add_client: (client) ->
     @clients.push client
 
-  message: (client, msg) ->
-    client.send "#{@hostname} #{msg}"
+  message: (client, event, msg) ->
+    client.send "#{@hostname} #{@events[event]} #{msg}"
 
 server = new Server()
 
@@ -58,14 +74,14 @@ handler = (socket) ->
       when "USER"
         current_user.username = command.args[0]
         current_user.hostname = command.args[1]
-        server.message client, "001 #{current_user.nick()} Welcome #{current_user.mask()}"
-        server.message client, "002 #{current_user.nick()} Your host"
-        server.message client, "003 #{current_user.nick()} This server was created"
-        server.message client, "004 #{current_user.nick()} myIrcServer 0.0.1"
+        server.message client, "welcome", "#{current_user.nick()} Welcome #{current_user.mask()}"
+        server.message client, "yourHost", "#{current_user.nick()} Your host"
+        server.message client, "created", "#{current_user.nick()} This server was created"
+        server.message client, "myInfo", "#{current_user.nick()} myIrcServer 0.0.1"
 
-        server.message client, "375 #{current_user.nick()} :- Message of the Day -"
-        server.message client, "372 #{current_user.nick()} myIrcServer 0.0.1"
-        server.message client, "376 #{current_user.nick()} :End of /MOTD command."
+        server.message client, "motdStart", "#{current_user.nick()} :- Message of the Day -"
+        server.message client, "motd", "#{current_user.nick()} myIrcServer 0.0.1"
+        server.message client, "motdEnd", "#{current_user.nick()} :End of /MOTD command."
       when "PING"
         server.message client, "PONG localhost :localhost"
       when "MODE"
@@ -74,10 +90,10 @@ handler = (socket) ->
           if command.args[1]
             client.send "#{current_user.mask()} MODE #{target} #{command.args[1]} #{current_user.nick()}"
       when "LIST"
-        server.message client, "321 #{current_user.nick()} Channel :Users  Name"
+        server.message client, "listStart", "#{current_user.nick()} Channel :Users  Name"
         for room in server.rooms.rooms
-          server.message client, "322 #{current_user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
-        server.message client, "323 #{current_user.nick()} :End of /LIST"
+          server.message client, "list", "#{current_user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
+        server.message client, "listEnd", "#{current_user.nick()} :End of /LIST"
       when "JOIN"
         channel = command.args[0]
         room = null
@@ -89,9 +105,9 @@ handler = (socket) ->
 
         room.join ->
           client.send "#{current_user.mask()} JOIN #{channel}"
-          server.message client, "331 #{current_user.nick()} #{channel} :No topic is set"
-          server.message client, "353 #{current_user.nick()} = #{channel} :#{users.join(" ")}"
-          server.message client, "366 #{current_user.nick()} #{channel} :End of /NAMES list."
+          server.message client, "noTopic", "#{current_user.nick()} #{channel} :No topic is set"
+          server.message client, "namesReply", "#{current_user.nick()} = #{channel} :#{users.join(" ")}"
+          server.message client, "endNames", "#{current_user.nick()} #{channel} :End of /NAMES list."
 
           # TODO: Move this to the Rooms object to have one listener per room per server
           room.listen (message) =>
