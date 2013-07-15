@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "campfire": ">= 0.1.1",
+    "campfire": "git://github.com/tristandunn/node-campfire.git#master",
     "carrier": ">= 0.1.10"
   },
   "repository": {
