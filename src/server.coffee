@@ -28,8 +28,14 @@ class Client
 
 rooms = new Rooms()
 
+class Server
+  clients: []
+
+server = new Server()
+
 handler = (socket) ->
   client = new Client(socket)
+  server.clients.push(client)
   current_user = null
 
   carrier.carry socket, (line) ->
@@ -101,6 +107,7 @@ handler = (socket) ->
         current_user.leave_room(channel, message)
 
   socket.on "end", ->
+    server.clients.splice(server.clients.indexAt(client))
     console.log "Client disconnected"
 
   socket.on "error", (e) ->
