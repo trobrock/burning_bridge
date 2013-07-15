@@ -60,7 +60,6 @@ class User
         token
     tokens.join(" ")
 
-
   _fetch: ->
     @_fetchFunction() (err, data) =>
       user = data.user

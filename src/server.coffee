@@ -26,17 +26,20 @@ class Client
     console.log "[s] :#{message}"
     @socket.write ":#{message}\r\n"
 
-rooms = new Rooms()
-
 class Server
   clients: []
+  rooms: new Rooms()
+
+  add_client: (client) ->
+    @clients.push client
 
 server = new Server()
 
 handler = (socket) ->
-  client = new Client(socket)
-  server.clients.push(client)
   current_user = null
+
+  client = new Client(socket)
+  server.add_client client
 
   carrier.carry socket, (line) ->
     command = Command.parse(line)
@@ -68,13 +71,13 @@ handler = (socket) ->
             client.send "#{current_user.mask()} MODE #{target} #{command.args[1]} #{current_user.nick()}"
       when "LIST"
         client.send "localhost 321 #{current_user.nick()} Channel :Users  Name"
-        for room in rooms.rooms
+        for room in server.rooms.rooms
           client.send "localhost 322 #{current_user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
         client.send "localhost 323 #{current_user.nick()} :End of /LIST"
       when "JOIN"
         channel = command.args[0]
         room = null
-        for r in rooms.rooms
+        for r in server.rooms.rooms
           room = r if r.name.snakeCase() == channel.replace("#", "")
 
         users = for user in room.users
@@ -86,7 +89,7 @@ handler = (socket) ->
           client.send "localhost 353 #{current_user.nick()} = #{channel} :#{users.join(" ")}"
           client.send "localhost 366 #{current_user.nick()} #{channel} :End of /NAMES list."
 
-          # TODO: How do we disconnect this on PART
+          # TODO: Move this to the Rooms object to have one listener per room per server
           room.listen (message) =>
             return if message.type != "TextMessage"
             return if message.userId == current_user.id
@@ -113,5 +116,5 @@ handler = (socket) ->
   socket.on "error", (e) ->
     console.log "Caught fatal error:", e
 
-server = net.createServer(handler).listen 6666, ->
+net.createServer(handler).listen 6666, ->
   console.log "Started listening on 6666"
