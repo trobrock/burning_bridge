@@ -67,6 +67,12 @@ class Server
     @message client, "motd", "#{user.nick()} myIrcServer 0.0.1"
     @message client, "motdEnd", "#{user.nick()} :End of /MOTD command."
 
+  list: (client, user) ->
+    @message client, "listStart", "#{user.nick()} Channel :Users  Name"
+    for room in @rooms.rooms
+      @message client, "list", "#{user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
+    @message client, "listEnd", "#{user.nick()} :End of /LIST"
+
 server = new Server()
 
 handler = (socket) ->
@@ -89,7 +95,7 @@ handler = (socket) ->
         current_user.username = command.args[0]
         current_user.hostname = command.args[1]
         server.welcome client, current_user
-        server.motd client, current_user
+        server.motd    client, current_user
       when "PING"
         server.pong client
       when "MODE"
@@ -98,10 +104,7 @@ handler = (socket) ->
           if command.args[1]
             client.send "#{current_user.mask()} MODE #{target} #{command.args[1]} #{current_user.nick()}"
       when "LIST"
-        server.message client, "listStart", "#{current_user.nick()} Channel :Users  Name"
-        for room in server.rooms.rooms
-          server.message client, "list", "#{current_user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
-        server.message client, "listEnd", "#{current_user.nick()} :End of /LIST"
+        server.list client, current_user
       when "JOIN"
         channel = command.args[0]
         room = null
