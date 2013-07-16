@@ -1,19 +1,11 @@
 net      = require "net"
 carrier  = require "carrier"
 fs       = require "fs"
-Campfire = require("campfire").Campfire
 User     = require("./user.js").User
 Command  = require("./command.js").Command
 Rooms    = require("./rooms.js").Rooms
 
 configuration = JSON.parse(fs.readFileSync("./config/config.json").toString())
-campfire_subdomain = configuration.subdomain
-campfire_token     = configuration.token
-campfire = new Campfire(
-  ssl: true,
-  token: campfire_token,
-  account: campfire_subdomain
-)
 
 String::snakeCase = ->
   @split(" ").map((word) ->
@@ -49,6 +41,9 @@ class Server
 
   add_client: (client) ->
     @clients.push client
+
+  remove_client: (client) ->
+    @clients.splice(@clients.indexOf(client), 1)
 
   broadcast_event: (client, event, msg) ->
     @broadcast client, "#{@events[event]} #{msg}"
@@ -134,7 +129,7 @@ handler = (socket) ->
             return if message.type != "TextMessage"
             return if message.userId == current_user.id
 
-            user = new User(campfire_subdomain, campfire_token, client, message.userId)
+            user = new User(configuration.subdomain, configuration.token, client, message.userId)
             user.once "fetched", ->
               name = user.real_name.snakeCase()
               server.message client, user, "PRIVMSG #{channel} :#{message.body}"
@@ -150,7 +145,7 @@ handler = (socket) ->
         current_user.leave_room(channel, message)
 
   socket.on "end", ->
-    server.clients.splice(server.clients.indexOf(client), 1)
+    server.remove_client client
     console.log "Client disconnected"
 
   socket.on "error", (e) ->
