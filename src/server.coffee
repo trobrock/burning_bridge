@@ -50,28 +50,34 @@ class Server
   add_client: (client) ->
     @clients.push client
 
-  message: (client, event, msg) ->
-    client.send "#{@hostname} #{@events[event]} #{msg}"
+  broadcast_event: (client, event, msg) ->
+    @broadcast client, "#{@events[event]} #{msg}"
+
+  broadcast: (client, msg) ->
+    client.send "#{@hostname} #{msg}"
+
+  message: (client, user, msg) ->
+    client.send "#{user.mask()} #{msg}"
 
   pong: (client) ->
-    client.send "#{@hostname} PONG #{@hostname} :#{@hostname}"
+    @broadcast client, "PONG #{@hostname} :#{@hostname}"
 
   welcome: (client, user) ->
-    @message client, "welcome", "#{user.nick()} Welcome #{user.mask()}"
-    @message client, "yourHost", "#{user.nick()} Your host"
-    @message client, "created", "#{user.nick()} This server was created"
-    @message client, "myInfo", "#{user.nick()} myIrcServer 0.0.1"
+    @broadcast_event client, "welcome", "#{user.nick()} Welcome #{user.mask()}"
+    @broadcast_event client, "yourHost", "#{user.nick()} Your host"
+    @broadcast_event client, "created", "#{user.nick()} This server was created"
+    @broadcast_event client, "myInfo", "#{user.nick()} myIrcServer 0.0.1"
 
   motd: (client, user) ->
-    @message client, "motdStart", "#{user.nick()} :- Message of the Day -"
-    @message client, "motd", "#{user.nick()} myIrcServer 0.0.1"
-    @message client, "motdEnd", "#{user.nick()} :End of /MOTD command."
+    @broadcast_event client, "motdStart", "#{user.nick()} :- Message of the Day -"
+    @broadcast_event client, "motd", "#{user.nick()} myIrcServer 0.0.1"
+    @broadcast_event client, "motdEnd", "#{user.nick()} :End of /MOTD command."
 
   list: (client, user) ->
-    @message client, "listStart", "#{user.nick()} Channel :Users  Name"
+    @broadcast_event client, "listStart", "#{user.nick()} Channel :Users  Name"
     for room in @rooms.rooms
-      @message client, "list", "#{user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
-    @message client, "listEnd", "#{user.nick()} :End of /LIST"
+      @broadcast_event client, "list", "#{user.nick()} #{room.name.snakeCase()} #{room.users.length} :[]"
+    @broadcast_event client, "listEnd", "#{user.nick()} :End of /LIST"
 
 server = new Server()
 
@@ -102,7 +108,7 @@ handler = (socket) ->
         target = command.args[0]
         if target.match /^\#/
           if command.args[1]
-            client.send "#{current_user.mask()} MODE #{target} #{command.args[1]} #{current_user.nick()}"
+            server.message client, current_user, "MODE #{target} #{command.args[1]} #{current_user.nick()}"
       when "LIST"
         server.list client, current_user
       when "JOIN"
@@ -115,13 +121,13 @@ handler = (socket) ->
           user.name.snakeCase()
 
         room.join ->
-          client.send "#{current_user.mask()} JOIN #{channel}"
+          server.message client, current_user, "JOIN #{channel}"
           if room.topic
-            server.message client, "topic", "#{current_user.nick()} #{channel} :#{room.topic}"
+            server.broadcast_event client, "topic", "#{current_user.nick()} #{channel} :#{room.topic}"
           else
-            server.message client, "noTopic", "#{current_user.nick()} #{channel} :No topic is set"
-          server.message client, "namesReply", "#{current_user.nick()} = #{channel} :#{users.join(" ")}"
-          server.message client, "endNames", "#{current_user.nick()} #{channel} :End of /NAMES list."
+            server.broadcast_event client, "noTopic", "#{current_user.nick()} #{channel} :No topic is set"
+          server.broadcast_event client, "namesReply", "#{current_user.nick()} = #{channel} :#{users.join(" ")}"
+          server.broadcast_event client, "endNames", "#{current_user.nick()} #{channel} :End of /NAMES list."
 
           # TODO: Move this to the Rooms object to have one listener per room per server
           room.listen (message) =>
@@ -131,7 +137,7 @@ handler = (socket) ->
             user = new User(campfire_subdomain, campfire_token, client, message.userId)
             user.once "fetched", ->
               name = user.real_name.snakeCase()
-              client.send "#{user.mask()} PRIVMSG #{channel} :#{message.body}"
+              server.message client, user, "PRIVMSG #{channel} :#{message.body}"
       when "PRIVMSG"
         channel = command.args[0]
         message = command.args.slice(1).join(" ").substr(1)
@@ -148,7 +154,10 @@ handler = (socket) ->
     console.log "Client disconnected"
 
   socket.on "error", (e) ->
-    console.log "Caught fatal error:", e
+    console.log "[socket] Caught fatal error:", e
 
-net.createServer(handler).listen 6666, ->
+s = net.createServer(handler).listen 6666, ->
   console.log "Started listening on 6666"
+
+s.on "error", (e) ->
+  console.log "[server] Caught fatal error:", e
