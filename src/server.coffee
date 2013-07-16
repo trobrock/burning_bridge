@@ -116,7 +116,10 @@ handler = (socket) ->
 
         room.join ->
           client.send "#{current_user.mask()} JOIN #{channel}"
-          server.message client, "noTopic", "#{current_user.nick()} #{channel} :No topic is set"
+          if room.topic
+            server.message client, "topic", "#{current_user.nick()} #{channel} :#{room.topic}"
+          else
+            server.message client, "noTopic", "#{current_user.nick()} #{channel} :No topic is set"
           server.message client, "namesReply", "#{current_user.nick()} = #{channel} :#{users.join(" ")}"
           server.message client, "endNames", "#{current_user.nick()} #{channel} :End of /NAMES list."
 
