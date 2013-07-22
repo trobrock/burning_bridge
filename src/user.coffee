@@ -45,7 +45,7 @@ class User
   nick: (new_nick) ->
     return @_nick unless new_nick?
 
-    @irc_client.send "#{@mask()} NICK :#{new_nick}"
+    @irc_client.send "#{@mask()} NICK :#{new_nick}" if @username
     @_nick = new_nick
 
   _clean_message: (room, message, callback) ->

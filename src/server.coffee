@@ -4,6 +4,7 @@ fs       = require "fs"
 User     = require("./user.js").User
 Command  = require("./command.js").Command
 Rooms    = require("./rooms.js").Rooms
+require('longjohn')
 
 configuration = JSON.parse(fs.readFileSync("./config/config.json").toString())
 
@@ -106,6 +107,18 @@ handler = (socket) ->
             server.message client, current_user, "MODE #{target} #{command.args[1]} #{current_user.nick()}"
       when "LIST"
         server.list client, current_user
+      when "NAMES"
+        channel = command.args[0]
+        room = null
+
+        for r in server.rooms.rooms
+          room = r if r.name.snakeCase() == channel.replace("#", "")
+
+        users = for user in room.users
+          user.name.snakeCase()
+
+        server.broadcast_event client, "namesReply", "#{current_user.nick()} = #{channel} :#{users.join(" ")}"
+        server.broadcast_event client, "endNames", "#{current_user.nick()} #{channel} :End of /NAMES list."
       when "JOIN"
         channel = command.args[0]
         room = null
@@ -151,7 +164,8 @@ handler = (socket) ->
   socket.on "error", (e) ->
     console.log "[socket] Caught fatal error:", e
 
-s = net.createServer(handler).listen 6666, ->
+s = net.createServer(handler)
+s.listen 6666, ->
   console.log "Started listening on 6666"
 
 s.on "error", (e) ->

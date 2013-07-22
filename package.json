@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "campfire": "git://github.com/tristandunn/node-campfire.git#master",
-    "carrier": ">= 0.1.10"
+    "carrier": ">= 0.1.10",
+    "longjohn": "0.2.1"
   },
   "repository": {
     "type": "git",
