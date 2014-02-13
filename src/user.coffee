@@ -18,7 +18,7 @@ class User
     @_fetch()
 
   mask: ->
-    "#{@nick()}!#{@username}@#{@campfire.domain}"
+    "#{@nick()}!#{@username}@#{@campfire.api_host}"
 
   speak_in_room: (channel, message) ->
     @find_room channel, (room) =>
