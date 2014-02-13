@@ -16,5 +16,8 @@
     "url": "https://github.com/trobrock/burning_bridge.git"
   },
   "author": "Trae Robrock <trobrock@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": "~> 0.8"
+  }
 }

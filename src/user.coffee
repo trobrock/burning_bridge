@@ -45,16 +45,16 @@ class User
   nick: (new_nick) ->
     return @_nick unless new_nick?
 
-    @irc_client.send "#{@mask()} NICK :#{new_nick}" if @username
+    @irc_client.send "#{@mask()} NICK :#{new_nick}" if @_nick
     @_nick = new_nick
 
   _clean_message: (room, message, callback) ->
     tokens = message.split(" ").map (token) ->
-      possible_name = token.match /\b([a-z]+_[a-z]+)(.*)/
+      possible_name = token.match /(^| )([a-z]+_[a-z]+)([^ ]*)/
       if possible_name
-        name = possible_name
+        name = possible_name[0].replace(/^ /, "")
         for user in room.users
-          name = "#{user.name}#{possible_name[2]}" if user.name.snakeCase() == possible_name[1]
+          name = "#{user.name}#{possible_name[3]}" if user.name.snakeCase() == possible_name[2]
         name
       else
         token
@@ -63,6 +63,7 @@ class User
   _fetch: ->
     @_fetchFunction() (err, data) =>
       user = data.user
+      console.log user
       @nick        user.name.snakeCase()
       @username  = @nick()
       @real_name = user.name

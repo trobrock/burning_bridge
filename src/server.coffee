@@ -137,13 +137,15 @@ handler = (socket) ->
           server.broadcast_event client, "namesReply", "#{current_user.nick()} = #{channel} :#{users.join(" ")}"
           server.broadcast_event client, "endNames", "#{current_user.nick()} #{channel} :End of /NAMES list."
 
-          # TODO: Move this to the Rooms object to have one listener per room per server
-          room.listen (message) =>
-            return if message.type != "TextMessage"
+          server.rooms.on "message:#{channel}", (message) =>
             return if message.userId == current_user.id
+            return unless message.type in ["TextMessage", "PasteMessage"]
+
+            #TODO: Handle PasteMessage correctly
 
             user = new User(configuration.subdomain, configuration.token, client, message.userId)
             user.once "fetched", ->
+              console.log user
               name = user.real_name.snakeCase()
               server.message client, user, "PRIVMSG #{channel} :#{message.body}"
       when "PRIVMSG"
