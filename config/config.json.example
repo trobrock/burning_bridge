@@ -1,4 +1,5 @@
 {
   "subdomain": "mysubdomain",
-  "token": "000000"
+  "token": "000000",
+  "port": 6667
 }

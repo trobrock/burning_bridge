@@ -167,8 +167,8 @@ handler = (socket) ->
     console.log "[socket] Caught fatal error:", e
 
 s = net.createServer(handler)
-s.listen 6666, ->
-  console.log "Started listening on 6666"
+s.listen configuration.port, ->
+  console.log "Started listening on #{configuration.port}"
 
 s.on "error", (e) ->
   console.log "[server] Caught fatal error:", e
